@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, Icon, Button, Badge } from '@/components/ui'
 
@@ -17,7 +17,7 @@ interface CodesData {
   children: ChildCode[]
 }
 
-export default function CodigosPage() {
+function CodigosContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const sessionId = searchParams.get('session_id')
@@ -281,5 +281,22 @@ export default function CodigosPage() {
         <Icon name="arrow_forward" />
       </Button>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-16">
+      <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+      <p className="text-text-muted">Cargando...</p>
+    </div>
+  )
+}
+
+export default function CodigosPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <CodigosContent />
+    </Suspense>
   )
 }

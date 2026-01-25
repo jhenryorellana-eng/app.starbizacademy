@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Card, Icon, Button } from '@/components/ui'
 import {
@@ -10,7 +10,7 @@ import {
   PRICING,
 } from '@/lib/pricing/config'
 
-export default function PagoPage() {
+function PagoContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -224,5 +224,22 @@ export default function PagoPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-16">
+      <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+      <p className="text-text-muted">Cargando...</p>
+    </div>
+  )
+}
+
+export default function PagoPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <PagoContent />
+    </Suspense>
   )
 }

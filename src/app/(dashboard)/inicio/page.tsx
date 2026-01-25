@@ -12,21 +12,50 @@ export const metadata = {
   description: 'Panel principal de tu cuenta familiar',
 }
 
-async function getFamilyData() {
+type FamilyWithRelations = {
+  id: string
+  name: string
+  created_at: string
+  children: Array<{
+    id: string
+    first_name: string
+    family_code_id: string | null
+  }>
+  family_codes: Array<{
+    id: string
+    code: string
+    code_type: string
+    profile_id: string | null
+    status: string
+  }>
+  memberships: Array<{
+    id: string
+    status: string
+    current_period_end: string | null
+    plans: {
+      id: string
+      name: string
+    } | null
+  }>
+}
+
+async function getFamilyData(): Promise<FamilyWithRelations | null> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) return null
 
-  const { data: profile } = await supabase
+  const { data: profileData } = await supabase
     .from('profiles')
     .select('family_id')
     .eq('id', user.id)
     .single()
 
+  const profile = profileData as { family_id: string | null } | null
+
   if (!profile?.family_id) return null
 
-  const { data: family } = await supabase
+  const { data: familyData } = await supabase
     .from('families')
     .select(`
       *,
@@ -55,7 +84,7 @@ async function getFamilyData() {
     .eq('id', profile.family_id)
     .single()
 
-  return family
+  return familyData as FamilyWithRelations | null
 }
 
 export default async function InicioPage() {
@@ -80,9 +109,9 @@ export default async function InicioPage() {
     : null
 
   // Get children with their codes
-  const childrenWithCodes = family?.children?.map((child: { id: string; first_name: string; family_code_id: string }) => {
+  const childrenWithCodes = family?.children?.map((child) => {
     const code = family.family_codes?.find(
-      (c: { id: string; code: string; code_type: string }) => c.id === child.family_code_id
+      (c) => c.id === child.family_code_id
     )
     return {
       id: child.id,
@@ -224,7 +253,7 @@ export default async function InicioPage() {
                 </Link>
               </div>
             ) : (
-              childrenWithCodes.map((child: { code: string; name: string; initial: string; color: string; lastAccess: string }) => (
+              childrenWithCodes.map((child) => (
                 <div
                   key={child.code}
                   className="flex items-center justify-between p-4 rounded-lg border border-slate-200 hover:border-primary/20 hover:bg-pink-50/30 transition-colors group"

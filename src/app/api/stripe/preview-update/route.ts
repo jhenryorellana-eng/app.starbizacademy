@@ -52,7 +52,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No active subscription found' }, { status: 404 })
     }
 
-    const currentChildrenCount = (membership.plans as { max_children: number })?.max_children || 1
+    const plansData = membership.plans as { max_children: number }[] | { max_children: number } | null
+    const currentChildrenCount = (Array.isArray(plansData) ? plansData[0]?.max_children : plansData?.max_children) || 1
 
     // Determine if there's a billing cycle change
     const currentBillingCycle = membership.billing_cycle as 'monthly' | 'yearly'

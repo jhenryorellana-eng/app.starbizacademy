@@ -47,7 +47,9 @@ export async function POST(request: NextRequest) {
       .eq('status', 'active')
       .single()
 
-    const maxChildren = membership?.plans?.max_children || 1
+    // plans is returned as an array from the Supabase relation
+    const plans = membership?.plans as { max_children: number }[] | { max_children: number } | null | undefined
+    const maxChildren = (Array.isArray(plans) ? plans[0]?.max_children : plans?.max_children) || 1
 
     // Get existing children count
     const { count: existingChildrenCount } = await supabase

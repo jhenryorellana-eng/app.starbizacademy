@@ -177,7 +177,7 @@ export default function MembresiaPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           newChildrenCount: count,
-          newBillingCycle: newBillingCycle || membership.billing_cycle,
+          newBillingCycle: newBillingCycle || membership?.billing_cycle,
         }),
       })
 
@@ -231,7 +231,7 @@ export default function MembresiaPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           newChildrenCount: selectedChildren,
-          newBillingCycle: newBillingCycle || membership.billing_cycle,
+          newBillingCycle: newBillingCycle || membership?.billing_cycle,
           ...(preview?.isDowngrade ? { childrenToKeep } : {}),
         }),
       })

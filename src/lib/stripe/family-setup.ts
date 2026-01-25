@@ -88,6 +88,9 @@ export async function createFamilyAndMembership(
   }
 
   // Create membership
+  if (!plan) {
+    throw new Error('Failed to get or create plan')
+  }
   const { error: membershipError } = await supabase.from('memberships').insert({
     family_id: family.id,
     plan_id: plan.id,

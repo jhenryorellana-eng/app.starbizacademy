@@ -54,7 +54,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const currentChildrenCount = (membership.plans as { id: string; max_children: number })?.max_children || 1
+    const plans = membership.plans as { id: string; max_children: number }[] | { id: string; max_children: number } | null
+    const currentChildrenCount = (Array.isArray(plans) ? plans[0]?.max_children : plans?.max_children) || 1
     const billingCycle = membership.billing_cycle as 'monthly' | 'yearly'
 
     // Get current subscription from Stripe

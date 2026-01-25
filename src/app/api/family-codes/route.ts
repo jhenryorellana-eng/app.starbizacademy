@@ -46,10 +46,15 @@ export async function GET() {
         name: `${profile.first_name} ${profile.last_name}`,
         code: parentCode?.code || '',
       },
-      children: children?.map((child) => ({
-        name: child.first_name,
-        code: child.family_codes?.code || '',
-      })) || [],
+      children: children?.map((child) => {
+        // family_codes is returned as an array from the Supabase relation
+        const familyCodes = child.family_codes as { code: string }[] | { code: string } | null
+        const code = Array.isArray(familyCodes) ? familyCodes[0]?.code : familyCodes?.code
+        return {
+          name: child.first_name,
+          code: code || '',
+        }
+      }) || [],
     }
 
     return NextResponse.json(response)

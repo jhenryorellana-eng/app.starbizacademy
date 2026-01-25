@@ -207,11 +207,24 @@ export async function getProfile() {
 
   if (!user) return null
 
-  const { data: profile } = await supabase
+  const { data: profileData } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single()
 
-  return profile
+  return profileData as {
+    id: string
+    email: string
+    first_name: string
+    last_name: string
+    whatsapp_number: string | null
+    country: string | null
+    city: string | null
+    avatar_url: string | null
+    role: 'parent' | 'child'
+    family_id: string | null
+    created_at: string
+    updated_at: string
+  } | null
 }

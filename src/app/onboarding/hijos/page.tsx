@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, Icon, Button, Input, Select } from '@/components/ui'
 import { countries } from '@/lib/constants/countries'
@@ -48,7 +48,7 @@ function getMinMaxDates() {
   }
 }
 
-export default function HijosPage() {
+function HijosContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -281,5 +281,22 @@ export default function HijosPage() {
         <Icon name="arrow_forward" />
       </Button>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-16">
+      <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+      <p className="text-text-muted">Cargando...</p>
+    </div>
+  )
+}
+
+export default function HijosPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <HijosContent />
+    </Suspense>
   )
 }

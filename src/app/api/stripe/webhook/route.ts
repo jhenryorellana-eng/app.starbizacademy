@@ -164,7 +164,8 @@ export async function POST(request: NextRequest) {
 
         // Use metadata if available, otherwise calculate from items
         const newChildrenCount = childrenCountFromMetadata || childrenFromItems
-        const currentChildrenCount = (membership?.plans as { max_children: number })?.max_children || 1
+        const plansData = membership?.plans as { max_children: number }[] | { max_children: number } | null | undefined
+        const currentChildrenCount = (Array.isArray(plansData) ? plansData[0]?.max_children : plansData?.max_children) || 1
 
         // Update membership basic fields
         const updateData: {

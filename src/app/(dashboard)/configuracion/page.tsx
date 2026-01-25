@@ -7,6 +7,11 @@ import { ChildrenSection } from './components/children-section'
 import { ActivitySection } from './components/activity-section'
 import { LogoutButton } from './components/logout-button'
 import { getUnreadNotificationCount } from '@/lib/notifications/helpers'
+import type { Profile, Child, FamilyCode } from '@/types/database.types'
+
+type ChildWithCode = Child & {
+  family_codes: Pick<FamilyCode, 'code' | 'status'> | null
+}
 
 export default async function ConfiguracionPage() {
   const supabase = await createClient()
@@ -19,32 +24,23 @@ export default async function ConfiguracionPage() {
   }
 
   // Fetch profile
-  const { data: profile, error: profileError } = await supabase
+  const { data: profileData, error: profileError } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single()
 
-  if (profileError || !profile) {
+  if (profileError || !profileData) {
     redirect('/login')
   }
+
+  const profile: Profile = profileData
 
   // Fetch notification count
   const notificationCount = await getUnreadNotificationCount()
 
   // Fetch children and membership if user has a family
-  let children: Array<{
-    id: string
-    family_id: string
-    first_name: string
-    last_name: string
-    birth_date: string
-    city: string
-    country: string
-    family_code_id: string | null
-    created_at: string
-    family_codes: { code: string; status: string } | null
-  }> = []
+  let children: ChildWithCode[] = []
 
   let hasMembership = false
   let maxChildrenAllowed = 1
@@ -61,10 +57,10 @@ export default async function ConfiguracionPage() {
       `)
       .eq('family_id', profile.family_id)
 
-    children = (childrenData || []) as typeof children
+    children = (childrenData || []) as ChildWithCode[]
 
     // Check for active membership
-    const { data: membership } = await supabase
+    const { data: membershipData } = await supabase
       .from('memberships')
       .select(`
         status,
@@ -75,6 +71,8 @@ export default async function ConfiguracionPage() {
       .eq('family_id', profile.family_id)
       .eq('status', 'active')
       .single()
+
+    const membership = membershipData as { status: string; plans: { max_children: number } | null } | null
 
     if (membership) {
       hasMembership = true

@@ -18,11 +18,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // Get user's profile to verify family membership
-    const { data: profile } = await supabase
+    const { data: profileData } = await supabase
       .from('profiles')
       .select('family_id, role')
       .eq('id', user.id)
       .single()
+
+    const profile = profileData as { family_id: string | null; role: string } | null
 
     if (!profile?.family_id || profile.role !== 'parent') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -64,11 +66,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     // Get user's profile to verify they are a parent
-    const { data: profile } = await supabase
+    const { data: profileData2 } = await supabase
       .from('profiles')
       .select('family_id, role')
       .eq('id', user.id)
       .single()
+
+    const profile = profileData2 as { family_id: string | null; role: string } | null
 
     if (!profile?.family_id || profile.role !== 'parent') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -99,7 +103,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const { data: child, error } = await supabase
       .from('children')
-      .update(updateData)
+      .update(updateData as never)
       .eq('id', id)
       .eq('family_id', profile.family_id)
       .select(`

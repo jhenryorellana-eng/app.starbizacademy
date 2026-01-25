@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendWelcomeEmail } from '@/lib/resend/emails'
 import { z } from 'zod'
+import type { InsertTables } from '@/types/database.types'
 
 const registerSchema = z.object({
   firstName: z.string().min(2),
@@ -57,16 +58,17 @@ export async function POST(request: NextRequest) {
 
     // Create the profile using admin client (bypasses RLS)
     const adminClient = createAdminClient()
+    const profileData: InsertTables<'profiles'> = {
+      id: authData.user.id,
+      email,
+      first_name: firstName,
+      last_name: lastName,
+      whatsapp_number: whatsappNumber || null,
+      role: 'parent',
+    }
     const { error: profileError } = await adminClient
       .from('profiles')
-      .insert({
-        id: authData.user.id,
-        email,
-        first_name: firstName,
-        last_name: lastName,
-        whatsapp_number: whatsappNumber || null,
-        role: 'parent',
-      })
+      .insert(profileData as never)
 
     if (profileError) {
       console.error('Profile creation error:', profileError)
