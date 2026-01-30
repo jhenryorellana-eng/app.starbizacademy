@@ -309,6 +309,21 @@ CREATE POLICY "Users can view their family pending billing changes"
         )
     );
 
+-- Mini app temporary codes table (for super app → mini app auth)
+CREATE TABLE IF NOT EXISTS mini_app_codes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    code TEXT UNIQUE NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    child_id UUID REFERENCES children(id) ON DELETE CASCADE,
+    mini_app_id TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_mini_app_codes_code ON mini_app_codes(code);
+CREATE INDEX IF NOT EXISTS idx_mini_app_codes_expires_at ON mini_app_codes(expires_at);
+
 -- ============================================
 -- SEED DATA - PLANS
 -- ============================================

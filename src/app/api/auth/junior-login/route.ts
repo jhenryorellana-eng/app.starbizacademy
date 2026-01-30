@@ -205,7 +205,8 @@ export async function POST(request: NextRequest) {
       refreshToken,
       expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 min
       user: {
-        id: child.id,
+        id: authData.user.id, // UUID del padre - coincide con auth.uid() para RLS
+        childId: child.id, // UUID del hijo - para referencia de datos del menor
         email: normalizedEmail, // Email del padre (para referencia)
         firstName: child.first_name,
         lastName: child.last_name,
