@@ -31,10 +31,14 @@ export async function POST(request: NextRequest) {
       .update({ used_at: new Date().toISOString() })
       .eq('id', codeData.id)
 
-    // 3. Get child data if child_id exists
-    let childData = null
-    let familyCode = ''
+    // 3. Get profile data (always needed)
+    const { data: profile } = await adminClient
+      .from('profiles')
+      .select('family_id, first_name, last_name')
+      .eq('id', codeData.user_id)
+      .single()
 
+    // 4. Get child data if child_id exists (for child mini apps)
     if (codeData.child_id) {
       const { data: child } = await adminClient
         .from('children')
@@ -42,40 +46,60 @@ export async function POST(request: NextRequest) {
         .eq('id', codeData.child_id)
         .single()
 
-      if (child) {
-        childData = child
+      let familyCode = ''
+      if (child?.family_code_id) {
+        const { data: fc } = await adminClient
+          .from('family_codes')
+          .select('code')
+          .eq('id', child.family_code_id)
+          .single()
 
-        // Get the family code
-        if (child.family_code_id) {
-          const { data: fc } = await adminClient
-            .from('family_codes')
-            .select('code')
-            .eq('id', child.family_code_id)
-            .single()
-
-          if (fc) {
-            familyCode = fc.code
-          }
+        if (fc) {
+          familyCode = fc.code
         }
+      }
+
+      return NextResponse.json({
+        user: {
+          id: codeData.user_id,
+          childId: child?.id || null,
+          firstName: child?.first_name || '',
+          lastName: child?.last_name || '',
+          dateOfBirth: child?.birth_date || null,
+          code: familyCode,
+          familyId: profile?.family_id || '',
+        }
+      })
+    }
+
+    // 5. Parent mini app flow (no child_id)
+    // Get parent's family code
+    let parentCode = ''
+    if (profile?.family_id) {
+      const { data: fc } = await adminClient
+        .from('family_codes')
+        .select('code')
+        .eq('family_id', profile.family_id)
+        .eq('code_type', 'parent')
+        .eq('status', 'active')
+        .single()
+
+      if (fc) {
+        parentCode = fc.code
       }
     }
 
-    // 4. Get family_id from profile
-    const { data: profile } = await adminClient
-      .from('profiles')
-      .select('family_id')
-      .eq('id', codeData.user_id)
-      .single()
+    // Get parent's email from auth
+    const { data: { user: authUser } } = await adminClient.auth.admin.getUserById(codeData.user_id)
 
-    // 5. Return user data
     return NextResponse.json({
       user: {
         id: codeData.user_id,
-        childId: childData?.id || null,
-        firstName: childData?.first_name || '',
-        lastName: childData?.last_name || '',
-        dateOfBirth: childData?.birth_date || null,
-        code: familyCode,
+        childId: null,
+        firstName: profile?.first_name || '',
+        lastName: profile?.last_name || '',
+        email: authUser?.email || null,
+        code: parentCode,
         familyId: profile?.family_id || '',
       }
     })
