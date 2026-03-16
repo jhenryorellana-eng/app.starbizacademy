@@ -153,11 +153,24 @@ export async function POST(request: NextRequest) {
       .eq('status', 'active')
       .single()
 
+    // Build partialAuth for MEM errors (user IS authenticated, just membership expired/inactive)
+    const partialAuth = {
+      accessToken: authData.session!.access_token,
+      refreshToken: authData.session!.refresh_token,
+      user: {
+        id: authData.user.id,
+        email: normalizedEmail,
+        firstName: parentProfile.first_name,
+        lastName: parentProfile.last_name,
+      },
+    }
+
     if (membershipError || !membership) {
       return NextResponse.json(
         {
           success: false,
           error: { code: 'MEM_002', message: 'La membresia familiar no esta activa' },
+          partialAuth,
         },
         { status: 403 }
       )
@@ -169,6 +182,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: { code: 'MEM_001', message: 'La membresia familiar ha expirado' },
+          partialAuth,
         },
         { status: 402 }
       )
