@@ -9,6 +9,8 @@ const registerSchema = z.object({
   lastName: z.string().min(2),
   email: z.string().email(),
   whatsappNumber: z.string().optional(),
+  country: z.string().optional(),
+  city: z.string().optional(),
   password: z.string().min(8),
 })
 
@@ -34,7 +36,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { firstName, lastName, email, whatsappNumber, password } = validatedFields.data
+    const { firstName, lastName, email, whatsappNumber, country, city, password } = validatedFields.data
     const adminClient = createAdminClient()
 
     // 1. Create user in Supabase Auth
@@ -69,6 +71,8 @@ export async function POST(request: NextRequest) {
       first_name: firstName,
       last_name: lastName,
       whatsapp_number: whatsappNumber || null,
+      country: country || null,
+      city: city || null,
       role: 'parent',
     }
 
