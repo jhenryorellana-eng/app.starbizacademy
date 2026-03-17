@@ -6,7 +6,7 @@ import { generateUniqueCodes } from '@/lib/codes/generator'
  * Shared logic for getting or creating a plan by children count.
  * Used by both Stripe and IAP family creation flows.
  */
-async function getOrCreatePlan(
+export async function getOrCreatePlan(
   supabase: ReturnType<typeof createAdminClient>,
   childrenCount: number
 ) {

@@ -55,6 +55,7 @@ export async function GET() {
           billing_cycle,
           current_period_end,
           cancel_at_period_end,
+          purchase_platform,
           plans (
             id,
             name,

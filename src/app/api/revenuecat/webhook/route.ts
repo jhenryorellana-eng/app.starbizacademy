@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createFamilyAndMembershipFromIAP } from '@/lib/stripe/family-setup'
+import { createFamilyAndMembershipFromIAP, getOrCreatePlan } from '@/lib/stripe/family-setup'
 import { sendPushToUser } from '@/lib/push-notifications'
 
 const webhookAuthKey = process.env.REVENUECAT_WEBHOOK_AUTH_KEY
@@ -118,8 +118,13 @@ export async function POST(request: NextRequest) {
         if (existingProfile?.family_id) {
           // User already has a family — update existing membership instead of creating new
           console.log('Existing family found, updating membership for family:', existingProfile.family_id)
+
+          // Find or create plan matching the IAP product children count
+          const plan = await getOrCreatePlan(supabase, parsed.childrenCount)
+
           await supabase.from('memberships').update({
             status: 'active',
+            plan_id: plan.id,
             current_period_end: currentPeriodEnd.toISOString(),
             revenuecat_id: revenuecatId,
             purchase_platform: purchasePlatform,

@@ -58,6 +58,7 @@ type MembershipData = {
   billing_cycle: 'monthly' | 'yearly'
   current_period_end: string
   cancel_at_period_end: boolean
+  purchase_platform?: 'web' | 'app_store' | 'play_store'
   plans: {
     id: string
     name: string
@@ -137,6 +138,16 @@ export default function MembresiaPage() {
 
   const handleManageSubscription = async () => {
     try {
+      // Redirect based on purchase platform
+      if (membership?.purchase_platform === 'play_store') {
+        window.open('https://play.google.com/store/account/subscriptions', '_blank')
+        return
+      }
+      if (membership?.purchase_platform === 'app_store') {
+        window.open('https://apps.apple.com/account/subscriptions', '_blank')
+        return
+      }
+      // Default: Stripe portal
       const response = await fetch('/api/stripe/create-portal', {
         method: 'POST',
       })
@@ -793,6 +804,22 @@ export default function MembresiaPage() {
             Precio flexible según la cantidad de hijos que desees incluir
           </p>
         </div>
+
+        {membership?.purchase_platform && membership.purchase_platform !== 'web' && (
+          <div className="mb-4 p-4 rounded-lg bg-blue-50 border border-blue-200">
+            <div className="flex items-start gap-3">
+              <Icon name="info" className="text-blue-600 mt-0.5" />
+              <div>
+                <p className="font-medium text-blue-800">
+                  Suscripcion via {membership.purchase_platform === 'play_store' ? 'Google Play' : 'App Store'}
+                </p>
+                <p className="text-sm text-blue-700 mt-1">
+                  Tu suscripcion fue adquirida desde la app. Para cambiar de plan, usa la app Padres 3.0 o gestiona tu suscripcion desde {membership.purchase_platform === 'play_store' ? 'Google Play' : 'App Store'}.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <Card className="p-6 md:p-8 border border-slate-100">
           {/* Pricing Formula */}
