@@ -189,6 +189,19 @@ export async function POST(request: NextRequest) {
           .single()
 
         if (profile?.family_id) {
+          // Check if this cancellation is for the current subscription
+          const cancelTransactionId = event.original_transaction_id || event.transaction_id
+          const { data: currentMembership } = await supabase
+            .from('memberships')
+            .select('revenuecat_id')
+            .eq('family_id', profile.family_id)
+            .single()
+
+          if (currentMembership?.revenuecat_id && cancelTransactionId && currentMembership.revenuecat_id !== cancelTransactionId) {
+            console.log('Ignoring CANCELLATION for old subscription:', cancelTransactionId, 'current:', currentMembership.revenuecat_id)
+            break
+          }
+
           await supabase
             .from('memberships')
             .update({ cancel_at_period_end: true })
@@ -225,6 +238,19 @@ export async function POST(request: NextRequest) {
           .single()
 
         if (profile?.family_id) {
+          // Check if this expiration is for the current subscription
+          const expTransactionId = event.original_transaction_id || event.transaction_id
+          const { data: currentMem } = await supabase
+            .from('memberships')
+            .select('revenuecat_id')
+            .eq('family_id', profile.family_id)
+            .single()
+
+          if (currentMem?.revenuecat_id && expTransactionId && currentMem.revenuecat_id !== expTransactionId) {
+            console.log('Ignoring EXPIRATION for old subscription:', expTransactionId, 'current:', currentMem.revenuecat_id)
+            break
+          }
+
           await supabase
             .from('memberships')
             .update({ status: 'canceled' })
