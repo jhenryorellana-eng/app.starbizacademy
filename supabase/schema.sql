@@ -52,6 +52,8 @@ CREATE TABLE IF NOT EXISTS memberships (
     billing_cycle TEXT NOT NULL CHECK (billing_cycle IN ('monthly', 'yearly')),
     stripe_subscription_id TEXT,
     stripe_customer_id TEXT,
+    revenuecat_id TEXT,
+    purchase_platform TEXT DEFAULT 'web' CHECK (purchase_platform IN ('web', 'app_store', 'play_store')),
     current_period_end TIMESTAMPTZ,
     cancel_at_period_end BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
