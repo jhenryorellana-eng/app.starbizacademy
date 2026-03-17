@@ -4,6 +4,7 @@ import Stripe from 'stripe'
 import { stripe } from '@/lib/stripe/client'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createFamilyAndMembership } from '@/lib/stripe/family-setup'
+import { sendPushToUser } from '@/lib/push-notifications'
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
@@ -21,6 +22,9 @@ async function createNotification(
     title,
     message,
   })
+
+  // Send push notification to user's devices (fire-and-forget)
+  sendPushToUser(profileId, title, message, { type }).catch(console.error)
 }
 
 export async function POST(request: NextRequest) {
@@ -168,15 +172,20 @@ export async function POST(request: NextRequest) {
         const currentChildrenCount = (Array.isArray(plansData) ? plansData[0]?.max_children : plansData?.max_children) || 1
 
         // Update membership basic fields
+        const interval = subscription.items.data[0]?.price?.recurring?.interval
+        const detectedBillingCycle = interval === 'year' ? 'yearly' : 'monthly'
+
         const updateData: {
           status: string
           current_period_end: string
           cancel_at_period_end: boolean
+          billing_cycle: string
           plan_id?: string
         } = {
           status: subscription.status === 'active' ? 'active' : 'past_due',
           current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
           cancel_at_period_end: subscription.cancel_at_period_end,
+          billing_cycle: detectedBillingCycle,
         }
 
         // Detect changes in cancel_at_period_end for notifications

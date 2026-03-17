@@ -386,77 +386,7 @@ export default function MembresiaPage() {
         notificationCount={notificationCount}
       />
 
-      {/* Pending Downgrade Banner */}
-      {pendingDowngrade && (
-        <div className="mb-4 p-4 rounded-lg bg-amber-50 border border-amber-200">
-          <div className="flex items-start gap-3">
-            <Icon name="schedule" className="text-amber-600 mt-0.5" />
-            <div className="flex-1">
-              <p className="font-medium text-amber-800">
-                Cambio de plan programado
-              </p>
-              <p className="text-sm text-amber-700 mt-1">
-                Tu plan se reducirá a {pendingDowngrade.new_children_count}{' '}
-                {pendingDowngrade.new_children_count === 1 ? 'hijo' : 'hijos'} el{' '}
-                {formatDate(pendingDowngrade.scheduled_for)}.
-              </p>
-              <button
-                onClick={handleCancelDowngrade}
-                disabled={cancelingDowngrade}
-                className="mt-2 text-sm text-amber-700 hover:text-amber-900 font-semibold underline flex items-center gap-1"
-              >
-                {cancelingDowngrade ? (
-                  <>
-                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-amber-700" />
-                    Cancelando...
-                  </>
-                ) : (
-                  <>
-                    <Icon name="close" size="sm" />
-                    Cancelar este cambio
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Pending Billing Change Banner */}
-      {pendingBillingChange && (
-        <div className="mb-4 p-4 rounded-lg bg-blue-50 border border-blue-200">
-          <div className="flex items-start gap-3">
-            <Icon name="sync" className="text-blue-600 mt-0.5" />
-            <div className="flex-1">
-              <p className="font-medium text-blue-800">
-                Cambio de ciclo de facturación programado
-              </p>
-              <p className="text-sm text-blue-700 mt-1">
-                Tu facturación cambiará a{' '}
-                {pendingBillingChange.new_billing_cycle === 'monthly' ? 'mensual' : 'anual'} el{' '}
-                {formatDate(pendingBillingChange.scheduled_for)}.
-              </p>
-              <button
-                onClick={handleCancelBillingChange}
-                disabled={cancelingBillingChange}
-                className="mt-2 text-sm text-blue-700 hover:text-blue-900 font-semibold underline flex items-center gap-1"
-              >
-                {cancelingBillingChange ? (
-                  <>
-                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700" />
-                    Cancelando...
-                  </>
-                ) : (
-                  <>
-                    <Icon name="close" size="sm" />
-                    Cancelar este cambio
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Note: Pending change banners removed - all changes are now immediate */}
 
       {/* Current Plan Section */}
       {membership && currentPlan ? (

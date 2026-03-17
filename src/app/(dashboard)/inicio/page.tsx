@@ -186,9 +186,9 @@ export default async function InicioPage() {
             <div>
               <p className="text-slate-500 text-sm font-medium mb-1">Membresía</p>
               <p className="text-slate-900 text-2xl font-bold tracking-tight">
-                {hasActiveMembership && daysRemaining !== null
+                {hasActiveMembership && daysRemaining !== null && daysRemaining > 0
                   ? `${daysRemaining} días`
-                  : 'Sin membresía'}
+                  : membershipStatus ? 'Inactivo' : 'Sin membresía'}
               </p>
             </div>
           </Card>
