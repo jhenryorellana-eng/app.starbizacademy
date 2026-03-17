@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendPushToUser } from '@/lib/push-notifications'
 
 export async function PUT(request: NextRequest) {
   try {
@@ -52,12 +53,14 @@ export async function PUT(request: NextRequest) {
 
     // Create notification for password change
     const adminClient = createAdminClient()
+    const pwdMsg = 'Tu contraseña ha sido cambiada exitosamente. Si no realizaste este cambio, contacta soporte inmediatamente.'
     await adminClient.from('notifications').insert({
       profile_id: user.id,
       type: 'password_changed',
       title: 'Contraseña actualizada',
-      message: 'Tu contraseña ha sido cambiada exitosamente. Si no realizaste este cambio, contacta soporte inmediatamente.',
+      message: pwdMsg,
     })
+    sendPushToUser(user.id, 'Contraseña actualizada', pwdMsg, { type: 'password_changed' }).catch(console.error)
 
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe/client'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendPushToUser } from '@/lib/push-notifications'
 
 /**
  * Cancela un cambio de ciclo de facturación programado
@@ -77,12 +78,14 @@ export async function POST(request: NextRequest) {
 
     // Create notification
     const currentBillingCycleLabel = membership.billing_cycle === 'monthly' ? 'mensual' : 'anual'
+    const cancelCycleMsg = `Has cancelado el cambio de ciclo. Mantendrás tu facturación ${currentBillingCycleLabel}.`
     await adminSupabase.from('notifications').insert({
       profile_id: user.id,
       type: 'subscription_cycle_change_canceled',
       title: 'Cambio de ciclo cancelado',
-      message: `Has cancelado el cambio de ciclo. Mantendrás tu facturación ${currentBillingCycleLabel}.`,
+      message: cancelCycleMsg,
     })
+    sendPushToUser(user.id, 'Cambio de ciclo cancelado', cancelCycleMsg, { type: 'subscription_cycle_change_canceled' }).catch(console.error)
 
     return NextResponse.json({
       success: true,

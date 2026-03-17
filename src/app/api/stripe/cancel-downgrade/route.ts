@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe, getAdditionalChildPriceId } from '@/lib/stripe/client'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendPushToUser } from '@/lib/push-notifications'
 
 /**
  * Cancela un downgrade programado
@@ -120,12 +121,14 @@ export async function POST(request: NextRequest) {
       .eq('id', pendingDowngrade.id)
 
     // Create notification
+    const cancelDowngradeMsg = `Has cancelado el cambio de plan. Mantendrás tu plan actual con ${currentChildrenCount} ${currentChildrenCount === 1 ? 'hijo' : 'hijos'}.`
     await adminSupabase.from('notifications').insert({
       profile_id: user.id,
       type: 'subscription_downgrade_canceled',
       title: 'Cambio de plan cancelado',
-      message: `Has cancelado el cambio de plan. Mantendrás tu plan actual con ${currentChildrenCount} ${currentChildrenCount === 1 ? 'hijo' : 'hijos'}.`,
+      message: cancelDowngradeMsg,
     })
+    sendPushToUser(user.id, 'Cambio de plan cancelado', cancelDowngradeMsg, { type: 'subscription_downgrade_canceled' }).catch(console.error)
 
     return NextResponse.json({
       success: true,

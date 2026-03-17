@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateUniqueCodes } from '@/lib/codes/generator'
 import { sendFamilyCodesEmail } from '@/lib/resend/emails'
+import { sendPushToUser } from '@/lib/push-notifications'
 
 interface ChildInput {
   firstName: string
@@ -146,12 +147,15 @@ export async function POST(request: NextRequest) {
 
     // Create notifications for each registered child
     for (const child of createdChildren) {
+      const childTitle = `${child.first_name} registrado exitosamente`
+      const childMsg = `${child.first_name} ${child.last_name} ya puede acceder a CEO Junior con su código de familia.`
       await adminClient.from('notifications').insert({
         profile_id: user.id,
         type: 'child_registered',
-        title: `${child.first_name} registrado exitosamente`,
-        message: `${child.first_name} ${child.last_name} ya puede acceder a CEO Junior con su código de familia.`,
+        title: childTitle,
+        message: childMsg,
       })
+      sendPushToUser(user.id, childTitle, childMsg, { type: 'child_registered' }).catch(console.error)
     }
 
     return NextResponse.json({

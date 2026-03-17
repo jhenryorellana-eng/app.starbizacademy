@@ -22,7 +22,19 @@ export async function GET() {
       return NextResponse.json({ error: 'Failed to fetch notifications' }, { status: 500 })
     }
 
-    return NextResponse.json(notifications)
+    const formattedNotifications = (notifications || []).map((n: Record<string, unknown>) => ({
+      id: n.id,
+      type: n.type,
+      title: n.title,
+      message: n.message,
+      readAt: n.read_at,
+      createdAt: n.created_at,
+      data: n.data,
+      miniAppId: n.mini_app_id,
+      source: n.source,
+    }))
+
+    return NextResponse.json({ notifications: formattedNotifications })
   } catch (error) {
     console.error('Error in notifications route:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
