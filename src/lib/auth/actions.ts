@@ -125,7 +125,7 @@ export async function register(prevState: AuthState, formData: FormData): Promis
   }
 
   revalidatePath('/', 'layout')
-  redirect('/onboarding/plan')
+  redirect('/enrollment')
 }
 
 export async function resetPassword(prevState: AuthState, formData: FormData): Promise<AuthState> {

@@ -43,6 +43,8 @@ export async function updateSession(request: NextRequest) {
 
   const isOnboardingRoute = request.nextUrl.pathname.startsWith('/onboarding')
 
+  const isEnrollmentRoute = request.nextUrl.pathname.startsWith('/enrollment')
+
   const isProtectedRoute = request.nextUrl.pathname.startsWith('/inicio') ||
     request.nextUrl.pathname.startsWith('/familia') ||
     request.nextUrl.pathname.startsWith('/apps') ||
@@ -51,7 +53,7 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/notificaciones')
 
   // If user is not authenticated and trying to access protected routes
-  if (!user && (isProtectedRoute || isOnboardingRoute)) {
+  if (!user && (isProtectedRoute || isOnboardingRoute || isEnrollmentRoute)) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)

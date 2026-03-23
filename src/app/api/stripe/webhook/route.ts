@@ -49,8 +49,35 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
-        const { userId, childrenCount } = session.metadata || {}
+        const { userId, childrenCount, type } = session.metadata || {}
 
+        // Handle enrollment payment ($25 one-time)
+        if (type === 'enrollment' && userId) {
+          const supabase = createAdminClient()
+          await supabase
+            .from('enrollments')
+            .upsert(
+              {
+                profile_id: userId,
+                status: 'active',
+                amount: 25.00,
+                stripe_checkout_session_id: session.id,
+                stripe_payment_intent_id: session.payment_intent as string,
+                paid_at: new Date().toISOString(),
+              },
+              { onConflict: 'profile_id' }
+            )
+
+          await createNotification(
+            userId,
+            'enrollment_completed',
+            '¡Inscripción exitosa!',
+            'Ya puedes acceder a Starbooks. ¡Bienvenido al programa Starbiz Academy!'
+          )
+          break
+        }
+
+        // Handle subscription payment ($17/month membership)
         if (userId && session.subscription) {
           const subscription = await stripe.subscriptions.retrieve(
             session.subscription as string
@@ -58,7 +85,6 @@ export async function POST(request: NextRequest) {
           const children = childrenCount ? Number(childrenCount) : 1
           await createFamilyAndMembership(userId, subscription, children)
 
-          // Create welcome notification
           await createNotification(
             userId,
             'subscription_created',

@@ -14,10 +14,11 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: '/inicio', label: 'Inicio', icon: 'home' },
-  { href: '/familia', label: 'Mi Familia', icon: 'group' },
-  { href: '/membresia', label: 'Membresía', icon: 'credit_card' },
+  // Hidden until memberships are enabled:
+  // { href: '/familia', label: 'Mi Familia', icon: 'group' },
+  // { href: '/membresia', label: 'Membresía', icon: 'credit_card' },
   { href: '/apps', label: 'Apps', icon: 'apps' },
-  { href: '/configuracion', label: 'Configuración', icon: 'settings' },
+  // { href: '/configuracion', label: 'Configuración', icon: 'settings' },
 ]
 
 interface MobileNavProps {

@@ -3,6 +3,7 @@ import { Header } from '@/components/layout'
 import { Card, CardContent, Icon, Badge, Button } from '@/components/ui'
 import Link from 'next/link'
 import { CopyCodeButton } from './CopyCodeButton'
+import { StarbooksAccessButton } from './StarbooksAccessButton'
 import { getProfile } from '@/lib/auth/actions'
 import { createClient } from '@/lib/supabase/server'
 import { getUnreadNotificationCount } from '@/lib/notifications/helpers'
@@ -87,6 +88,21 @@ async function getFamilyData(): Promise<FamilyWithRelations | null> {
   return familyData as FamilyWithRelations | null
 }
 
+async function getEnrollmentStatus(): Promise<boolean> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+
+  const { data } = await supabase
+    .from('enrollments')
+    .select('status')
+    .eq('profile_id', user.id)
+    .eq('status', 'active')
+    .single()
+
+  return !!data
+}
+
 export default async function InicioPage() {
   const profile = await getProfile()
 
@@ -94,9 +110,10 @@ export default async function InicioPage() {
     redirect('/login')
   }
 
-  const [family, notificationCount] = await Promise.all([
+  const [family, notificationCount, isEnrolled] = await Promise.all([
     getFamilyData(),
     getUnreadNotificationCount(),
+    getEnrollmentStatus(),
   ])
 
   const membership = family?.memberships?.[0]
@@ -133,6 +150,50 @@ export default async function InicioPage() {
         notificationCount={notificationCount}
       />
 
+      {/* Starbooks Access */}
+      {isEnrolled ? (
+        <section className="mb-6">
+          <Card className="p-6 border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-xl bg-primary/10">
+                  <Icon name="menu_book" className="text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900">Starbooks</h3>
+                  <p className="text-sm text-slate-500">Tu plataforma de aprendizaje esta lista</p>
+                </div>
+              </div>
+              <StarbooksAccessButton />
+            </div>
+          </Card>
+        </section>
+      ) : (
+        <section className="mb-6">
+          <Card className="p-6 border border-amber-200 bg-amber-50/50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-xl bg-amber-100">
+                  <Icon name="school" className="text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900">Inscribete al programa</h3>
+                  <p className="text-sm text-slate-500">Paga tu inscripcion de $25 USD y accede a Starbooks</p>
+                </div>
+              </div>
+              <Link
+                href="/enrollment"
+                className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl transition-colors text-sm"
+              >
+                Inscribirme
+              </Link>
+            </div>
+          </Card>
+        </section>
+      )}
+
+      {/* Hidden until memberships are enabled */}
+      {false && (<>
       {/* Stats Cards */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Family Card */}
@@ -186,7 +247,7 @@ export default async function InicioPage() {
             <div>
               <p className="text-slate-500 text-sm font-medium mb-1">Membresía</p>
               <p className="text-slate-900 text-2xl font-bold tracking-tight">
-                {hasActiveMembership && daysRemaining !== null && daysRemaining > 0
+                {hasActiveMembership && (daysRemaining ?? 0) > 0
                   ? `${daysRemaining} días`
                   : membershipStatus ? 'Inactivo' : 'Sin membresía'}
               </p>
@@ -335,6 +396,7 @@ export default async function InicioPage() {
           </CardContent>
         </Card>
       </section>
+      </>)}
     </>
   )
 }
