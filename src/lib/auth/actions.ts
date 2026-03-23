@@ -124,8 +124,53 @@ export async function register(prevState: AuthState, formData: FormData): Promis
     return { error: 'Error al crear el perfil' }
   }
 
+  // Link enrollment if user paid before registering
+  const sessionId = formData.get('sessionId') as string | null
+  try {
+    const { stripe } = await import('@/lib/stripe/client')
+    let paidSession = null
+
+    // Strategy 1: Verify by session_id
+    if (sessionId) {
+      try {
+        const session = await stripe.checkout.sessions.retrieve(sessionId)
+        if (session.payment_status === 'paid' && session.metadata?.type === 'enrollment') {
+          paidSession = session
+        }
+      } catch { /* session not found */ }
+    }
+
+    // Strategy 2: Search by email (fallback for closed browser)
+    if (!paidSession) {
+      const sessions = await stripe.checkout.sessions.list({
+        customer_details: { email },
+        limit: 10,
+      })
+      paidSession = sessions.data.find(
+        (s) => s.payment_status === 'paid' && s.metadata?.type === 'enrollment'
+      ) || null
+    }
+
+    // Create enrollment if payment found
+    if (paidSession) {
+      await adminClient.from('enrollments').upsert(
+        {
+          profile_id: authData.user.id,
+          status: 'active',
+          amount: 25.00,
+          stripe_checkout_session_id: paidSession.id,
+          stripe_payment_intent_id: paidSession.payment_intent as string,
+          paid_at: new Date().toISOString(),
+        },
+        { onConflict: 'profile_id' }
+      )
+    }
+  } catch (e) {
+    console.error('Link enrollment error (non-blocking):', e)
+  }
+
   revalidatePath('/', 'layout')
-  redirect('/enrollment')
+  redirect('/inicio')
 }
 
 export async function resetPassword(prevState: AuthState, formData: FormData): Promise<AuthState> {

@@ -36,6 +36,10 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Public checkout route (no auth required)
+  const isCheckoutRoute = request.nextUrl.pathname.startsWith('/checkout')
+  if (isCheckoutRoute) return supabaseResponse
+
   // Protected routes
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login') ||
     request.nextUrl.pathname.startsWith('/registro') ||
@@ -60,7 +64,10 @@ export async function updateSession(request: NextRequest) {
   }
 
   // If user is authenticated and trying to access auth routes
-  if (user && isAuthRoute) {
+  // Exception: /registro?paid=true — allow access for post-payment registration flow
+  const isPaidRegistration = request.nextUrl.pathname.startsWith('/registro') &&
+    request.nextUrl.searchParams.get('paid') === 'true'
+  if (user && isAuthRoute && !isPaidRegistration) {
     const url = request.nextUrl.clone()
     url.pathname = '/inicio'
     return NextResponse.redirect(url)
