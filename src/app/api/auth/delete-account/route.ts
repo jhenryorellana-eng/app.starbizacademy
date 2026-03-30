@@ -80,7 +80,7 @@ export async function DELETE(request: NextRequest) {
 
       // 4. Clean up RevenueCat subscriber (best-effort)
       if (membership?.revenuecat_id || user.id) {
-        const rcApiKey = process.env.REVENUECAT_API_KEY
+        const rcApiKey = process.env.REVENUECAT_API_KEY_V1
         if (rcApiKey) {
           try {
             await fetch(
