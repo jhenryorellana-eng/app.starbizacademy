@@ -14,6 +14,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - api routes that don't need auth (webhooks)
      */
-    '/((?!_next/static|_next/image|favicon.ico|api/stripe/webhook|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/stripe/webhook|api/revenuecat/webhook|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
