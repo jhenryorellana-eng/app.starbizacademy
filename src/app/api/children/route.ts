@@ -65,15 +65,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get existing codes to avoid duplicates
-    const { data: existingCodes } = await supabase
+    // Find existing unlinked child codes (created by webhook but not yet linked to a child)
+    const { data: unlinkedCodes } = await supabase
       .from('family_codes')
-      .select('code')
+      .select('id, code')
+      .eq('family_id', profile.family_id)
+      .eq('code_type', 'child')
+      .eq('status', 'active')
 
-    const existingCodeSet = new Set(existingCodes?.map((c) => c.code) || [])
+    // Determine which codes are already linked to a child record
+    const { data: linkedChildren } = await supabase
+      .from('children')
+      .select('family_code_id')
+      .eq('family_id', profile.family_id)
 
-    // Generate codes for children
-    const childCodes = generateUniqueCodes('child', children.length, existingCodeSet)
+    const linkedCodeIds = new Set(linkedChildren?.map((c) => c.family_code_id).filter(Boolean) || [])
+    const availableCodes = (unlinkedCodes || []).filter((c) => !linkedCodeIds.has(c.id))
+
+    // Only generate new codes if we don't have enough unlinked ones
+    const codesNeeded = Math.max(0, children.length - availableCodes.length)
+    let newCodes: string[] = []
+    if (codesNeeded > 0) {
+      const { data: allCodes } = await supabase.from('family_codes').select('code')
+      const existingCodeSet = new Set(allCodes?.map((c) => c.code) || [])
+      newCodes = generateUniqueCodes('child', codesNeeded, existingCodeSet)
+    }
 
     // Create children and codes
     const createdChildren = []
@@ -81,26 +97,36 @@ export async function POST(request: NextRequest) {
 
     for (let i = 0; i < children.length; i++) {
       const child = children[i]
-      const code = childCodes[i]
+      let familyCodeId: string
+      let code: string
 
-      // Create family code
-      const { data: familyCode, error: codeError } = await supabase
-        .from('family_codes')
-        .insert({
-          code,
-          code_type: 'child',
-          family_id: profile.family_id,
-          status: 'active',
-        })
-        .select()
-        .single()
+      if (i < availableCodes.length) {
+        // Reuse existing unlinked code from webhook
+        familyCodeId = availableCodes[i].id
+        code = availableCodes[i].code
+      } else {
+        // Create new code (only when needed)
+        const newCode = newCodes[i - availableCodes.length]
+        const { data: familyCode, error: codeError } = await supabase
+          .from('family_codes')
+          .insert({
+            code: newCode,
+            code_type: 'child',
+            family_id: profile.family_id,
+            status: 'active',
+          })
+          .select()
+          .single()
 
-      if (codeError) {
-        console.error('Error creating code:', codeError)
-        continue
+        if (codeError) {
+          console.error('Error creating code:', codeError)
+          continue
+        }
+        familyCodeId = familyCode.id
+        code = newCode
       }
 
-      // Create child
+      // Create child linked to the code
       const { data: createdChild, error: childError } = await supabase
         .from('children')
         .insert({
@@ -110,7 +136,7 @@ export async function POST(request: NextRequest) {
           birth_date: child.birthDate,
           city: child.city,
           country: child.country,
-          family_code_id: familyCode.id,
+          family_code_id: familyCodeId,
         })
         .select()
         .single()
