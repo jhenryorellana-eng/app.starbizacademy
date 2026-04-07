@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getUserFromRequest } from '@/lib/supabase/api-auth'
 import { generateUniqueCodes } from '@/lib/codes/generator'
 import { sendFamilyCodesEmail } from '@/lib/resend/emails'
 import { sendPushToUser } from '@/lib/push-notifications'
@@ -15,8 +15,7 @@ interface ChildInput {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getUserFromRequest(request)
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -28,6 +27,8 @@ export async function POST(request: NextRequest) {
     if (!children || !Array.isArray(children) || children.length === 0) {
       return NextResponse.json({ error: 'No children provided' }, { status: 400 })
     }
+
+    const supabase = createAdminClient()
 
     // Get user's profile and family
     const { data: profile } = await supabase
@@ -48,7 +49,6 @@ export async function POST(request: NextRequest) {
       .eq('status', 'active')
       .single()
 
-    // plans is returned as an array from the Supabase relation
     const plans = membership?.plans as { max_children: number }[] | { max_children: number } | null | undefined
     const maxChildren = (Array.isArray(plans) ? plans[0]?.max_children : plans?.max_children) || 1
 
@@ -75,9 +75,6 @@ export async function POST(request: NextRequest) {
     // Generate codes for children
     const childCodes = generateUniqueCodes('child', children.length, existingCodeSet)
 
-    // Use admin client to insert data
-    const adminClient = createAdminClient()
-
     // Create children and codes
     const createdChildren = []
     const createdCodes = []
@@ -87,7 +84,7 @@ export async function POST(request: NextRequest) {
       const code = childCodes[i]
 
       // Create family code
-      const { data: familyCode, error: codeError } = await adminClient
+      const { data: familyCode, error: codeError } = await supabase
         .from('family_codes')
         .insert({
           code,
@@ -104,7 +101,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Create child
-      const { data: createdChild, error: childError } = await adminClient
+      const { data: createdChild, error: childError } = await supabase
         .from('children')
         .insert({
           family_id: profile.family_id,
@@ -149,7 +146,7 @@ export async function POST(request: NextRequest) {
     for (const child of createdChildren) {
       const childTitle = `${child.first_name} registrado exitosamente`
       const childMsg = `${child.first_name} ${child.last_name} ya puede acceder a CEO Junior con su código de familia.`
-      await adminClient.from('notifications').insert({
+      await supabase.from('notifications').insert({
         profile_id: user.id,
         type: 'child_registered',
         title: childTitle,
@@ -168,14 +165,15 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getUserFromRequest(request)
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const supabase = createAdminClient()
 
     const { data: profile } = await supabase
       .from('profiles')

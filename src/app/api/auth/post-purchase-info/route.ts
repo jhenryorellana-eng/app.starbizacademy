@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getUserFromRequest } from '@/lib/supabase/api-auth'
 
 /**
  * GET /api/auth/post-purchase-info
@@ -12,14 +13,15 @@ import { createClient } from '@/lib/supabase/server'
  * as there may be a small delay between purchase confirmation
  * and webhook processing.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getUserFromRequest(request)
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const supabase = createAdminClient()
 
     // Get profile with family_id
     const { data: profile } = await supabase
