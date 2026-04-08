@@ -4,6 +4,7 @@ import { createFamilyAndMembershipFromIAP, getOrCreatePlan } from '@/lib/stripe/
 import { sendPushToUser } from '@/lib/push-notifications'
 
 const webhookAuthKey = process.env.REVENUECAT_WEBHOOK_AUTH_KEY
+const revenuecatApiKey = process.env.REVENUECAT_API_KEY_V1
 
 /**
  * Parses a RevenueCat product ID to extract children count and billing cycle.
@@ -63,9 +64,88 @@ export async function POST(request: NextRequest) {
 
     console.log('RevenueCat webhook:', { eventType, appUserId, productId, store })
 
+    // Handle TRANSFER events (no app_user_id, uses transferred_to instead)
+    if (eventType === 'TRANSFER') {
+      const transferredTo: string[] = event.transferred_to || []
+      console.log('TRANSFER event, transferred_to:', transferredTo)
+
+      for (const userId of transferredTo) {
+        if (userId.startsWith('$RCAnonymousID:')) continue
+
+        // Fetch subscriber info from RevenueCat to get active subscription details
+        if (!revenuecatApiKey) {
+          console.error('REVENUECAT_API_KEY_V1 not set, cannot process TRANSFER')
+          break
+        }
+
+        try {
+          const rcResponse = await fetch(
+            `https://api.revenuecat.com/v1/subscribers/${userId}`,
+            { headers: { Authorization: `Bearer ${revenuecatApiKey}` } }
+          )
+
+          if (!rcResponse.ok) {
+            console.error('RevenueCat API error:', rcResponse.status)
+            continue
+          }
+
+          const rcData = await rcResponse.json()
+          const entitlement = rcData.subscriber?.entitlements?.starbiz_family_access
+
+          if (!entitlement || !entitlement.product_identifier) {
+            console.log('No active entitlement for transferred user:', userId)
+            continue
+          }
+
+          const parsed = parseProductId(entitlement.product_identifier)
+          if (!parsed) continue
+
+          const supabase = createAdminClient()
+
+          // Check if family already exists
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('family_id')
+            .eq('id', userId)
+            .single()
+
+          if (profile?.family_id) {
+            console.log('User already has family, skipping TRANSFER:', userId)
+            continue
+          }
+
+          const purchasePlatform = entitlement.store === 'play_store' ? 'play_store' as const : 'app_store' as const
+          const expiresDate = entitlement.expires_date ? new Date(entitlement.expires_date) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+          const revenuecatId = entitlement.original_purchase_date || `transfer_${Date.now()}`
+
+          await createFamilyAndMembershipFromIAP(
+            userId,
+            parsed.childrenCount,
+            parsed.billingCycle,
+            revenuecatId,
+            purchasePlatform,
+            expiresDate,
+          )
+
+          await createNotification(
+            userId,
+            'subscription_created',
+            'Bienvenido a Starbiz Academy!',
+            `Tu membresia familiar con ${parsed.childrenCount} ${parsed.childrenCount === 1 ? 'hijo' : 'hijos'} ha sido activada exitosamente.`
+          )
+
+          console.log('Family created via TRANSFER for user:', userId)
+        } catch (err) {
+          console.error('Error processing TRANSFER for user:', userId, err)
+        }
+      }
+
+      return NextResponse.json({ received: true })
+    }
+
     if (!appUserId) {
-      console.error('RevenueCat webhook missing app_user_id')
-      return NextResponse.json({ error: 'Missing app_user_id' }, { status: 400 })
+      console.log('Webhook event without app_user_id, type:', eventType)
+      return NextResponse.json({ received: true })
     }
 
     // Skip anonymous RevenueCat IDs — we only process identified users
