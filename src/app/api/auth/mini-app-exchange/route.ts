@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
+type EnrollmentStatus = 'active' | 'pending' | 'refunded' | 'none'
+type MembershipStatus = 'active' | 'past_due' | 'canceled' | 'expired' | 'none'
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -38,6 +41,35 @@ export async function POST(request: NextRequest) {
       .eq('id', codeData.user_id)
       .single()
 
+    // 3b. Get enrollment + membership status so mini-apps can filter content
+    // by is_free when the user does not have an active membership. These are
+    // embedded in the JWT that each mini-app issues downstream.
+    const [enrollmentRes, membershipRes] = await Promise.all([
+      adminClient
+        .from('enrollments')
+        .select('status')
+        .eq('profile_id', codeData.user_id)
+        .maybeSingle(),
+      profile?.family_id
+        ? adminClient
+            .from('memberships')
+            .select('status, current_period_end')
+            .eq('family_id', profile.family_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ])
+
+    const enrollmentStatus: EnrollmentStatus =
+      (enrollmentRes.data?.status as EnrollmentStatus) ?? 'none'
+
+    let membershipStatus: MembershipStatus =
+      (membershipRes.data?.status as MembershipStatus) ?? 'none'
+    // Normalize: active membership whose period end is past counts as expired.
+    const mEnd = membershipRes.data?.current_period_end
+    if (membershipStatus === 'active' && mEnd && new Date(mEnd) < new Date()) {
+      membershipStatus = 'expired'
+    }
+
     // 4. Get child data if child_id exists (for child mini apps)
     if (codeData.child_id) {
       const { data: child } = await adminClient
@@ -68,7 +100,9 @@ export async function POST(request: NextRequest) {
           dateOfBirth: child?.birth_date || null,
           code: familyCode,
           familyId: profile?.family_id || '',
-        }
+        },
+        enrollmentStatus,
+        membershipStatus,
       })
     }
 
@@ -101,7 +135,9 @@ export async function POST(request: NextRequest) {
         email: authUser?.email || null,
         code: parentCode,
         familyId: profile?.family_id || '',
-      }
+      },
+      enrollmentStatus,
+      membershipStatus,
     })
   } catch (error) {
     console.error('Mini app exchange error:', error)

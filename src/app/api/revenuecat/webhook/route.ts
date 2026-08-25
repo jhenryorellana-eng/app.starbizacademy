@@ -171,6 +171,32 @@ export async function POST(request: NextRequest) {
           break
         }
 
+        // Bifurcation: the $25 one-time enrollment uses a dedicated product
+        // (enrollment_one_time) and writes to the enrollments table, not the
+        // memberships/family path that the family_N_cycle products follow.
+        if (productId === 'enrollment_one_time' || productId.endsWith('.enrollment_one_time')) {
+          const purchasePlatform = store === 'PLAY_STORE' ? 'play_store' as const : 'app_store' as const
+          const transactionId = event.original_transaction_id || event.transaction_id || `rc_${Date.now()}`
+
+          await supabase.from('enrollments').upsert({
+            profile_id: appUserId,
+            status: 'active',
+            amount: 24.99,
+            purchase_platform: purchasePlatform,
+            revenuecat_product_id: productId,
+            revenuecat_transaction_id: transactionId,
+            paid_at: new Date().toISOString(),
+          }, { onConflict: 'profile_id' })
+
+          await createNotification(
+            appUserId,
+            'enrollment_completed',
+            'Inscripcion completada',
+            'Tu inscripcion fue procesada. Ya puedes acceder al contenido gratuito de la plataforma.'
+          )
+          break
+        }
+
         const parsed = parseProductId(productId)
         if (!parsed) {
           console.error('Could not parse product_id:', productId)
